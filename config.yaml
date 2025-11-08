@@ -1,0 +1,47 @@
+# AIAgent 配置文件
+# 服务器配置
+server:
+  name: "AIAgent"
+  version: "v1.0.0"
+  listen: "localhost:8080"
+  debug: true
+# Ollama 配置
+ollama:
+  host: "http://localhost:11434"
+  model: "qwen3:30b"
+  timeout: 600s
+  max_retries: 3
+# MCP 服务器配置
+mcp_servers:
+  # 内置文件系统 MCP 服务器
+  - name: "builtin-filesystem"
+    command: "./bin/mcp-server"
+    args: ["--allow-root", "/"]
+    transport: "stdio"
+    enabled: true
+
+# 示例: 外部文件系统 MCP 服务器
+# - name: "gopls"
+#   command: "/bin/bash"
+#   args: ["-c", "cd /tmp/ai-agent-analysis && gopls mcp"]
+#   transport: "stdio"
+#   enabled: true
+
+# 示例: 外部文件系统 MCP 服务器
+# 需要先安装: npm install -g @modelcontextprotocol/server-filesystem
+# - name: "filesystem"
+#   command: "npx"
+#   args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/workspace"]
+#   transport: "stdio"
+#   enabled: false
+
+# 示例: Git MCP 服务器
+# 需要先安装: npm install -g @modelcontextprotocol/server-git
+# - name: "git"
+#   command: "npx"
+#   args: ["-y", "@modelcontextprotocol/server-git", "--repository", "/path/to/repo"]
+#   env:
+#     GIT_AUTHOR_NAME: "AIAgent"
+#     GIT_AUTHOR_EMAIL: "aiagent@example.com"
+#   transport: "stdio"
+#   enabled: false
