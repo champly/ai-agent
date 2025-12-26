@@ -13,7 +13,7 @@ AIAgent 是一个以 Go 编写的智能体演示项目，展示如何将本地�
 ## 环境依赖
 
 - Go 1.25+（参考 `go.mod`）。
-- 本地安装并启动 Ollama，且已拉取配置中默认的模型（默认 `qwen3:8b`）。
+- 本地安装并启动 Ollama，且已拉取配置中默认的模型（默认 `qwen3-coder:480b-cloud`）。
 - （可选）系统中部署其他 MCP Server，用于扩展工具能力。
 
 ## 快速上手
@@ -34,7 +34,7 @@ AIAgent 是一个以 Go 编写的智能体演示项目，展示如何将本地�
 
    ```bash
    ollama serve
-   ollama pull qwen3:8b
+   ollama pull qwen3-coder:480b-cloud
    ```
 
 4. 使用默认配置启动 Agent：

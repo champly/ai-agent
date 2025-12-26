@@ -8,7 +8,7 @@ server:
 # Ollama 配置
 ollama:
   host: "http://localhost:11434"
-  model: "qwen3:30b"
+  model: "qwen3-coder:480b-cloud"
   timeout: 600s
   max_retries: 3
 # MCP 服务器配置

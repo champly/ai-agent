@@ -82,7 +82,7 @@ func (c *Config) setDefaults() {
 		c.Ollama.Host = "http://localhost:11434"
 	}
 	if c.Ollama.Model == "" {
-		c.Ollama.Model = "qwen3:8b"
+		c.Ollama.Model = "qwen3-coder:480b-cloud"
 	}
 	if c.Ollama.Timeout == 0 {
 		c.Ollama.Timeout = 120 * time.Second

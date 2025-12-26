@@ -4,8 +4,8 @@ go 1.25.4
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/modelcontextprotocol/go-sdk v1.1.0
-	github.com/ollama/ollama v0.12.10
+	github.com/modelcontextprotocol/go-sdk v1.2.0
+	github.com/ollama/ollama v0.13.5
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/klog/v2 v2.130.1
 )

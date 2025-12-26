@@ -6,10 +6,10 @@
 
 - 安装 Go 1.25 及以上版本（可前往 [go.dev](https://go.dev/dl/) 下载）。
 - 安装 Ollama（参考 [ollama.com](https://ollama.com/download)），确保 `ollama serve` 可在本地运行。
-- 拉取配置中使用的默认模型 `qwen3:8b`：
+- 拉取配置中使用的默认模型 `qwen3-coder:480b-cloud`：
 
   ```bash
-  ollama pull qwen3:8b
+  ollama pull qwen3-coder:480b-cloud
   ```
 
 ## 2. 编译项目
