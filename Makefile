@@ -23,12 +23,21 @@ clean:
 	@rm -rf bin/
 	@echo "✓ Clean complete"
 
+# 导入 RAG 文档（需要先启动 agent）
+rag-import:
+	@echo "Importing RAG documents from docs/rag..."
+	@curl -s -X POST http://localhost:8080/api/rag/import \
+		-H "Content-Type: application/json" \
+		-d '{"dir": "docs/rag"}' | jq .
+	@echo "✓ RAG import complete"
+
 # 帮助信息
 help:
 	@echo "AIAgent Makefile"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make build    - Build all binaries"
-	@echo "  make run      - Build and run AIAgent"
-	@echo "  make clean    - Clean build artifacts"
-	@echo "  make help     - Show this help"
+	@echo "  make build      - Build all binaries"
+	@echo "  make run        - Build and run AIAgent"
+	@echo "  make rag-import - Import RAG documents from docs/rag (requires running agent)"
+	@echo "  make clean      - Clean build artifacts"
+	@echo "  make help       - Show this help"

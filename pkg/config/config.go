@@ -13,6 +13,7 @@ type Config struct {
 	Server     ServerConfig      `yaml:"server"`
 	Ollama     OllamaConfig      `yaml:"ollama"`
 	MCPServers []MCPServerConfig `yaml:"mcp_servers"`
+	RAG        RAGConfig         `yaml:"rag"`
 }
 
 // ServerConfig 服务器配置
@@ -41,6 +42,15 @@ type MCPServerConfig struct {
 	Env       map[string]string `yaml:"env"`
 	Transport string            `yaml:"transport"` // stdio
 	Enabled   bool              `yaml:"enabled"`
+}
+
+// RAGConfig RAG 配置
+type RAGConfig struct {
+	EmbedModel   string `yaml:"embed_model"`   // 嵌入模型名称
+	ChunkSize    int    `yaml:"chunk_size"`    // 分块大小
+	ChunkOverlap int    `yaml:"chunk_overlap"` // 分块重叠
+	TopK         int    `yaml:"top_k"`         // 检索返回的最大结果数
+	DocumentsDir string `yaml:"documents_dir"` // RAG 文档目录
 }
 
 // Load 从文件加载配置
@@ -92,6 +102,23 @@ func (c *Config) setDefaults() {
 	}
 	if c.Ollama.SystemPrompt == "" {
 		c.Ollama.SystemPrompt = defaultSystemPrompt
+	}
+
+	// RAG 默认值
+	if c.RAG.EmbedModel == "" {
+		c.RAG.EmbedModel = "nomic-embed-text:latest"
+	}
+	if c.RAG.ChunkSize == 0 {
+		c.RAG.ChunkSize = 500
+	}
+	if c.RAG.ChunkOverlap == 0 {
+		c.RAG.ChunkOverlap = 50
+	}
+	if c.RAG.TopK == 0 {
+		c.RAG.TopK = 3
+	}
+	if c.RAG.DocumentsDir == "" {
+		c.RAG.DocumentsDir = "docs/rag"
 	}
 }
 

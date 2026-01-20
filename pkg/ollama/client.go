@@ -2,6 +2,7 @@ package ollama
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"time"
@@ -49,6 +50,10 @@ func (c *Client) Chat(ctx context.Context, messages []api.Message, tools []api.T
 		req.Tools = tools
 	}
 
+	if reqJSON, err := json.MarshalIndent(req, "", "  "); err == nil {
+		klog.V(3).InfoS("Ollama chat request", "req", string(reqJSON))
+	}
+
 	var resp api.ChatResponse
 	err := c.client.Chat(ctx, req, func(r api.ChatResponse) error {
 		resp = r
@@ -72,4 +77,36 @@ func (c *Client) Ping(ctx context.Context) error {
 	// 使用 List 方法检查连接
 	_, err := c.client.List(ctx)
 	return err
+}
+
+// Embed 生成文本的嵌入向量
+func (c *Client) Embed(ctx context.Context, model string, input string) ([]float32, error) {
+	klog.V(3).InfoS("Ollama embed request", "model", model, "inputLen", len(input))
+
+	req := &api.EmbedRequest{
+		Model: model,
+		Input: input,
+	}
+
+	resp, err := c.client.Embed(ctx, req)
+	if err != nil {
+		klog.ErrorS(err, "Ollama embed failed")
+		return nil, err
+	}
+
+	if len(resp.Embeddings) == 0 {
+		return nil, nil
+	}
+
+	// 将 float64 转换为 float32
+	embedding := make([]float32, len(resp.Embeddings[0]))
+	for i, v := range resp.Embeddings[0] {
+		embedding[i] = float32(v)
+	}
+
+	klog.V(3).InfoS("Ollama embed response",
+		"model", model,
+		"dimension", len(embedding))
+
+	return embedding, nil
 }

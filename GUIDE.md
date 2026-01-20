@@ -6,10 +6,11 @@
 
 - 安装 Go 1.25 及以上版本（可前往 [go.dev](https://go.dev/dl/) 下载）。
 - 安装 Ollama（参考 [ollama.com](https://ollama.com/download)），确保 `ollama serve` 可在本地运行。
-- 拉取配置中使用的默认模型 `qwen3-coder:480b-cloud`：
+- 拉取配置中使用的默认模型和嵌入模型：
 
   ```bash
   ollama pull qwen3-coder:480b-cloud
+  ollama pull nomic-embed-text:latest  # RAG 嵌入模型
   ```
 
 ## 2. 编译项目
@@ -29,6 +30,7 @@ make build
 - `server.listen`：HTTP 服务监听地址。
 - `ollama.host`：指向本地 Ollama 服务的 URL。
 - `mcp_servers`：需要加载的 MCP Server 列表。示例中默认启用了内置文件系统工具。
+- `rag.documents_dir`：RAG 文档目录，默认为 `docs/rag`，支持 `.md` 文件。
 
 ## 4. 启动 Agent
 
@@ -42,9 +44,52 @@ make build
 
 - Ping Ollama，校验模型可用性。
 - 启动并注册所有启用的 MCP 工具。
+- 从 `rag.documents_dir` 加载所有 `.md` 文件作为 RAG 知识库。
 - 监听配置的 HTTP 地址，等待请求。
 
-## 5. 高级体验：让 Agent 进行自我诊断
+## 5. RAG 功能体验
+
+项目内置了 RAG（检索增强生成）模块，启动时会自动从 `docs/rag` 目录加载 `.md` 文件作为知识库。
+
+### 5.1 添加自定义知识库文档
+
+将你的文档以 `.md` 格式放入 `docs/rag` 目录即可，Agent 启动时会自动加载。
+
+### 5.2 对比普通聊天与 RAG 增强聊天
+
+1. **不带 RAG 的普通聊天**（模型可能不知道云巢是什么）：
+
+   ```bash
+   curl -X POST http://localhost:8080/api/chat \
+     -H 'Content-Type: application/json' \
+     -d '{"message":"云巢是什么？"}'
+   ```
+
+2. **带 RAG 增强的聊天**（会从知识库检索相关内容）：
+
+   ```bash
+   curl -X POST http://localhost:8080/api/chat/rag \
+     -H 'Content-Type: application/json' \
+     -d '{"message":"云巢是什么？"}'
+   ```
+
+3. **搜索 RAG 知识库**：
+
+   ```bash
+   curl -X POST http://localhost:8080/api/rag/search \
+     -H 'Content-Type: application/json' \
+     -d '{"query":"云巢平台架构"}'
+   ```
+
+4. **通过 API 添加文档到知识库**：
+
+   ```bash
+   curl -X POST http://localhost:8080/api/rag/add \
+     -H 'Content-Type: application/json' \
+     -d '{"id":"my-doc", "content":"这是我的文档内容..."}'
+   ```
+
+## 6. 高级体验：让 Agent 进行自我诊断
 
 以下示例演示如何通过连续对话让 Agent 主动调用 MCP 工具，自助分析项目状态并生成报告。
 
@@ -92,7 +137,7 @@ make build
 - **具备记忆的多轮对话**：一个 `conversation_id` 内的所有消息都会参与后续推理。
 - **面向目标的工具使用**：模型自主决定何时调用 MCP 工具，并将工具结果融入最终答案。
 
-## 6. 关闭服务
+## 7. 关闭服务
 
 按 `Ctrl+C` 或发送终止信号即可触发优雅退出，Agent 会依次停止 HTTP 服务与 MCP 客户端。
 
@@ -102,3 +147,4 @@ make build
 - 使用 `ollama list` 检查模型是否已拉取，必要时重新执行 `ollama pull`。
 - MCP 工具调用失败通常与进程权限或路径设置相关，可查看 Agent 日志定位问题。
 - 若需更多调试信息，可在配置中设置 `server.debug: true`，或启动时附加 `-v=3` 参数。
+- RAG 功能需要 `nomic-embed-text:latest` 模型，请确保已拉取。

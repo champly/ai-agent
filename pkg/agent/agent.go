@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/google/uuid"
@@ -11,6 +13,7 @@ import (
 
 	"github.com/champly/ai-agent/pkg/config"
 	"github.com/champly/ai-agent/pkg/ollama"
+	"github.com/champly/ai-agent/pkg/rag"
 )
 
 // Agent AI 代理
@@ -26,6 +29,9 @@ type Agent struct {
 
 	// 外部 MCP 客户端管理器
 	mcpClient *MCPClient
+
+	// RAG 模块
+	rag *rag.RAG
 }
 
 // New 创建 AI 代理
@@ -46,9 +52,22 @@ func New(cfg *config.Config) (*Agent, error) {
 	}
 	agent.ollama = client
 
+	// 初始化 RAG 模块
+	ragCfg := &rag.Config{
+		EmbedModel:   cfg.RAG.EmbedModel,
+		ChunkSize:    cfg.RAG.ChunkSize,
+		ChunkOverlap: cfg.RAG.ChunkOverlap,
+	}
+	agent.rag = rag.New(ragCfg, func(ctx context.Context, text string) ([]float32, error) {
+		return client.Embed(ctx, cfg.RAG.EmbedModel, text)
+	})
+
 	klog.InfoS("Ollama client initialized",
 		"host", cfg.Ollama.Host,
 		"model", cfg.Ollama.Model)
+	klog.InfoS("RAG module initialized",
+		"embedModel", cfg.RAG.EmbedModel,
+		"chunkSize", cfg.RAG.ChunkSize)
 
 	return agent, nil
 }
@@ -272,4 +291,98 @@ type ToolCallInfo struct {
 	Tool      string         `json:"tool"`
 	Arguments map[string]any `json:"arguments"`
 	Result    string         `json:"result"`
+}
+
+// AddRAGDocument 添加 RAG 文档
+func (a *Agent) AddRAGDocument(ctx context.Context, id, content string, metadata map[string]string) error {
+	return a.rag.AddDocument(ctx, id, content, metadata)
+}
+
+// AddRAGDocumentChunks 添加已分块的 RAG 文档
+func (a *Agent) AddRAGDocumentChunks(ctx context.Context, id string, chunks []string, metadata map[string]string) error {
+	return a.rag.AddDocumentWithChunks(ctx, id, chunks, metadata)
+}
+
+// ChatWithRAG 带 RAG 增强的聊天
+func (a *Agent) ChatWithRAG(ctx context.Context, req *ChatRequest) (*ChatResponse, error) {
+	// 获取 RAG 上下文（使用配置中的 TopK）
+	ragContext, err := a.rag.GetContext(ctx, req.Message, a.cfg.RAG.TopK)
+	if err != nil {
+		klog.ErrorS(err, "Failed to get RAG context")
+		// 即使 RAG 失败，也继续处理（降级到普通聊天）
+	}
+
+	// 获取或创建对话
+	conv := a.getOrCreateConversation(req.ConversationID)
+
+	// 如果有 RAG 上下文，添加到消息中
+	enhancedMessage := req.Message
+	if ragContext != "" {
+		enhancedMessage = ragContext + "\n用户问题：" + req.Message
+	}
+
+	// 添加增强后的用户消息
+	conv.AddMessage(api.Message{
+		Role:    "user",
+		Content: enhancedMessage,
+	})
+
+	// 获取所有可用工具
+	tools := a.getAllOllamaTools()
+
+	// 开始对话循环
+	return a.conversationLoop(ctx, conv, tools, req.Model)
+}
+
+// RAGDocumentCount 返回 RAG 文档数量
+func (a *Agent) RAGDocumentCount() int {
+	return a.rag.DocumentCount()
+}
+
+// SearchRAG 搜索 RAG 文档
+func (a *Agent) SearchRAG(ctx context.Context, query string) ([]rag.SearchResult, error) {
+	return a.rag.Search(ctx, query, a.cfg.RAG.TopK)
+}
+
+// LoadRAGDocumentsFromDir 从目录加载所有 md 文件作为 RAG 文档
+func (a *Agent) LoadRAGDocumentsFromDir(ctx context.Context, dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("failed to read directory %s: %w", dir, err)
+	}
+
+	loadedCount := 0
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		// 只处理 .md 文件
+		if filepath.Ext(entry.Name()) != ".md" {
+			continue
+		}
+
+		filePath := filepath.Join(dir, entry.Name())
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			klog.ErrorS(err, "Failed to read file", "file", filePath)
+			continue
+		}
+
+		// 使用文件名（不含扩展名）作为文档 ID
+		docID := entry.Name()[:len(entry.Name())-3]
+
+		err = a.rag.AddDocument(ctx, docID, string(content), map[string]string{
+			"source": filePath,
+			"file":   entry.Name(),
+		})
+		if err != nil {
+			klog.ErrorS(err, "Failed to add document", "file", filePath)
+			continue
+		}
+		loadedCount++
+	}
+
+	klog.InfoS("RAG documents loaded", "dir", dir, "files", loadedCount, "totalChunks", a.rag.DocumentCount())
+	return nil
 }
